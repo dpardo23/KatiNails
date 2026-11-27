@@ -224,7 +224,7 @@ jobs:
           squawk "${migraciones[@]}"
       - name: Puertos de Supabase reservados y libres
         # 5632x cae en el rango de puertos efímeros de Linux (32768-60999): una conexión de salida
-        # (por ejemplo, la descarga de imágenes de Docker) puede ocuparlo. Reservarlo lo evita.
+        # (por ejemplo, la descarga de imágenes de Docker) puede usar ese puerto. La reserva lo evita.
         run: |
           sudo sysctl -w net.ipv4.ip_local_reserved_ports=56320-56329
           ocupados="$(ss -tanH | awk '{print $4}' | grep -E ':5632[0-9]$' || true)"
