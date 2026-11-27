@@ -1,0 +1,33 @@
+name: mutacion
+
+# Corrida completa de las pruebas de mutación del dominio. En cada PR corre solo sobre lo que cambia (ci.yml).
+on:
+  schedule:
+    - cron: '0 9 * * 1' # lunes 05:00 en Bolivia
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutacion
+  cancel-in-progress: true
+
+jobs:
+  dominio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm
+      - name: Stryker sobre todo packages/domain
+        run: |
+          if ! git ls-files 'packages/domain/src/*.ts' | grep -qvE '\.test\.ts$|^packages/domain/src/index\.ts$'; then
+            echo "El dominio todavía no tiene código."
+            exit 0
+          fi
+          pnpm --filter @katinails/domain run test:mutation

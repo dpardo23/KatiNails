@@ -263,6 +263,31 @@ jobs:
         # Una prueba con `test.fails` debe fallar: si pasa antes de que exista la función, el job falla.
         run: pnpm run test:acceptance
 
+  mutacion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm
+      - name: Pruebas de mutación del dominio (solo los archivos que cambian en el PR)
+        # La corrida completa es semanal (mutacion.yml). El mínimo lo fija thresholds.break de stryker.config.json.
+        env:
+          EVENTO: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENTO" != "pull_request" ]; then echo "Fuera de un PR: la corrida completa es semanal."; exit 0; fi
+          cambios="$(git diff --name-only --diff-filter=AMR "$BASE...$HEAD" -- 'packages/domain/src/*.ts' \
+            | grep -vE '\.test\.ts$|^packages/domain/src/index\.ts$' | sed 's|^packages/domain/||' | paste -sd, - || true)"
+          if [ -z "$cambios" ]; then echo "El PR no cambia código del dominio."; exit 0; fi
+          echo "Archivos: $cambios"
+          pnpm --filter @katinails/domain exec stryker run --mutate "$cambios"
+
   ci-ok:
     if: always()
     needs:
@@ -276,6 +301,7 @@ jobs:
         calidad,
         aceptacion,
         integracion,
+        mutacion,
       ]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
