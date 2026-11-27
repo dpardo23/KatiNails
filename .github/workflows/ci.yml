@@ -71,6 +71,15 @@ jobs:
             echo "::error::A main solo entran PR desde develop o hotfix/*."
             exit 1
           fi
+      - name: Título del cierre de sprint (develop hacia main)
+        if: github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref == 'develop'
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+        run: |
+          if ! printf '%s' "$TITULO" | grep -Eq '^chore\(repo\): cierre del sprint [0-9]{2} · [a-z0-9-]+$'; then
+            echo "::error::El título debe ser: chore(repo): cierre del sprint NN · slug"
+            exit 1
+          fi
       - name: Título y descripción del PR
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
