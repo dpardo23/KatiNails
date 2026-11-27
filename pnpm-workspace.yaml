@@ -20,6 +20,13 @@ allowBuilds:
   sharp: true
   workerd: true # wrangler
 
+# Versiones forzadas: cada una con su motivo y su aviso. Se quitan cuando el paquete origen se actualiza.
+overrides:
+  # typed-rest-client 2.3.1 (llega por Stryker) fija qs 6.15.1, con cuatro avisos medios:
+  # GHSA-4mjr-xmp4-gh2g, GHSA-6pq8-jhm2-2vcw, GHSA-q8mj-m7cp-5q26 y GHSA-x5fp-wj9c-mxmx.
+  # 6.16.2 los corrige. Revisado el 27 nov 2026.
+  'typed-rest-client>qs': 6.16.2
+
 # Una sola versión de cada dependencia en todo el monorepo (sherif lo controla)
 catalog:
   # Lenguaje y monorepo
@@ -67,6 +74,8 @@ catalog:
   '@commitlint/cli': 21.2.4
   '@commitlint/config-conventional': 21.2.4
   knip: 6.45.1
+  '@stryker-mutator/core': 10.1.1
+  '@stryker-mutator/vitest-runner': 10.1.1
   sherif: 1.13.0
   dependency-cruiser: 18.7.2
   markdownlint-cli2: 0.24.1
