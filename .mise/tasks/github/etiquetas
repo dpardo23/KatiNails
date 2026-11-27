@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Sincroniza las etiquetas de .github/labels.yml con GitHub (crea o actualiza; no borra)"
+set -euo pipefail
+
+archivo=".github/labels.yml"
+# Cada línea: - { name: '…', color: '…', description: '…' }
+grep -E '^- \{' "$archivo" | while IFS= read -r linea; do
+  nombre="$(sed -E "s/.*name: '([^']+)'.*/\1/" <<<"$linea")"
+  color="$(sed -E "s/.*color: '([^']+)'.*/\1/" <<<"$linea")"
+  descripcion="$(sed -E "s/.*description: '([^']+)'.*/\1/" <<<"$linea")"
+  gh label create "$nombre" --color "$color" --description "$descripcion" --force >/dev/null
+  echo "OK  $nombre"
+done

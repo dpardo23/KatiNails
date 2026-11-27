@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#MISE description="Crea en .herramientas/bin envolturas que cargan .entorno antes de cada herramienta, para programas que no se abren desde una terminal del proyecto (editores)"
+# Cada envoltura carga .entorno desde la raíz, vuelve a su carpeta y ejecuta la herramienta de mise.toml.
+# Así un programa abierto desde el menú del sistema no escribe fuera del proyecto.
+set -euo pipefail
+
+: "${PROYECTO_RAIZ:?FALLA: carga el entorno primero (source ./.entorno)}"
+
+HERRAMIENTAS=(node npm npx pnpm deno shellcheck java)
+destino="$PROYECTO_RAIZ/.herramientas/bin"
+mkdir -p "$destino"
+
+escribir() {
+  local nombre="$1" comando="$2" archivo
+  archivo="$(mktemp "$destino/.tmp.XXXXXX")"
+  cat >"$archivo" <<EOF
+#!/usr/bin/env bash
+# Generado por mise run entorno:envolturas. No se edita a mano.
+set -euo pipefail
+directorio="\$PWD"
+cd "$PROYECTO_RAIZ"
+# shellcheck disable=SC1091
+source ./.entorno >/dev/null
+cd "\$directorio"
+$comando
+EOF
+  chmod 755 "$archivo"
+  mv -f "$archivo" "$destino/$nombre"
+}
+
+mise_bin="$(command -v mise)"
+escribir mise "exec \"$mise_bin\" \"\$@\""
+for herramienta in "${HERRAMIENTAS[@]}"; do
+  escribir "$herramienta" "exec \"$mise_bin\" exec -- $herramienta \"\$@\""
+done
+
+echo "Envolturas en $destino: mise ${HERRAMIENTAS[*]}"

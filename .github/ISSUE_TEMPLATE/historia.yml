@@ -1,0 +1,44 @@
+name: Historia
+description: Una historia de usuario del backlog
+title: 'HU-<MÓDULO>-NNN · '
+labels: ['tipo:historia']
+body:
+  - type: input
+    id: historia
+    attributes:
+      label: Identificador de la historia
+      placeholder: HU-RES-001
+    validations:
+      required: true
+  - type: input
+    id: requisitos
+    attributes:
+      label: Requisitos que cubre (solo identificadores)
+      placeholder: RF-RES-005
+    validations:
+      required: true
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad (MoSCoW)
+      options: [Debe, Debería, Podría]
+    validations:
+      required: true
+  - type: dropdown
+    id: puntos
+    attributes:
+      label: Puntos
+      options: ['1', '2', '3', '5', '8', '13']
+    validations:
+      required: true
+  - type: checkboxes
+    id: ready
+    attributes:
+      label: Definition of Ready
+      options:
+        - label: Criterios en Gherkin completos
+          required: true
+        - label: Estados de carga, vacío y error definidos
+          required: true
+        - label: Dependencias resueltas o planificadas
+          required: true

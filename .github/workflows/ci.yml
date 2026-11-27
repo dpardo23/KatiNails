@@ -1,0 +1,246 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Valores públicos de prueba para compilar la app (no son secretos: la app los valida con Zod).
+  VITE_SUPABASE_URL: http://127.0.0.1:56321
+  VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_valor_de_prueba_0000 # gitleaks:allow (valor de prueba, no es un secreto)
+  VITE_API_URL: http://127.0.0.1:56321/functions/v1/api
+
+jobs:
+  versiones:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Versiones de mise.toml (misma fuente que el entorno local)
+        run: |
+          python3 - <<'EOF'
+          import json, tomllib
+          tools = tomllib.load(open("mise.toml", "rb"))["tools"]
+          package = json.load(open("package.json"))
+          assert package["engines"]["node"] == tools["node"], "engines.node distinto de mise.toml"
+          assert package["packageManager"] == f"pnpm@{tools['pnpm']}", "packageManager distinto de mise.toml"
+          print("OK", tools["node"], tools["pnpm"])
+          EOF
+
+  convenciones:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm
+      - name: Nombre de la rama
+        if: github.event_name == 'pull_request'
+        env:
+          RAMA: ${{ github.head_ref }}
+        run: |
+          patron='^(feature/HU-[A-Z]+-[0-9]{3}-[a-z0-9-]+|tech/T-[0-9]{2}-[a-z0-9-]+|(fix|hotfix)/BUG-[0-9]+-[a-z0-9-]+|(docs|ci|chore)/[a-z0-9-]+|spike/T-[0-9]{2}-[a-z0-9-]+|develop|dependabot/.+)$'
+          if ! printf '%s' "$RAMA" | grep -Eq "$patron"; then
+            echo "::error::La rama no cumple el modelo de ramas."
+            exit 1
+          fi
+      - name: Origen del PR hacia main (solo develop o hotfix/*)
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        env:
+          RAMA: ${{ github.head_ref }}
+        run: |
+          if ! printf '%s' "$RAMA" | grep -Eq '^(develop|hotfix/BUG-[0-9]+-[a-z0-9-]+)$'; then
+            echo "::error::A main solo entran PR desde develop o hotfix/*."
+            exit 1
+          fi
+      - name: Título y descripción del PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+          CUERPO: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$TITULO" | pnpm exec commitlint
+          if printf '%s\n' "$CUERPO" | grep -Eqi '^[[:space:]]*co-authored-by:'; then
+            echo "::error::La descripción del PR tiene un pie no permitido."
+            exit 1
+          fi
+      - name: Mensajes de commit
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: pnpm exec commitlint --from "$BASE" --to "$HEAD"
+
+  seguridad:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm gitleaks osv-scanner
+      - name: Archivos privados versionados
+        run: |
+          if [ -n "$(git ls-files --cached --ignored --exclude-standard)" ]; then
+            echo "::error::Hay archivos versionados que coinciden con .gitignore."
+            exit 1
+          fi
+      - name: Rutas y textos prohibidos (lista secreta)
+        env:
+          PATRONES: ${{ secrets.PATRONES_PROHIBIDOS }}
+        run: |
+          if [ -z "$PATRONES" ]; then
+            echo "::error::Falta el secreto PATRONES_PROHIBIDOS."
+            exit 1
+          fi
+          lista="$(mktemp)"
+          trap 'rm -f "$lista"' EXIT
+          printf '%s\n' "$PATRONES" | sed '/^$/d' > "$lista"
+          if git ls-files | grep -qiF -f "$lista" \
+            || git log --all --format='%an%n%ae%n%B' | grep -qiF -f "$lista" \
+            || git log --all --name-only --format='' | grep -qiF -f "$lista"; then
+            echo "::error::Falló la revisión de rutas y textos prohibidos."
+            exit 1
+          fi
+          echo "Pasó."
+      - name: Mismos nombres en .env.example e infra/secretos.toml
+        run: node scripts/comparar-env.mjs
+      - name: Secretos en todo el historial
+        run: gitleaks git --redact --no-banner --exit-code 1
+      - name: Vulnerabilidades de dependencias (OSV, con excepciones en osv-scanner.toml)
+        run: osv-scanner scan source --lockfile pnpm-lock.yaml
+      - name: Vulnerabilidades de producción (pnpm)
+        run: pnpm audit --prod
+      - name: Dependencias nuevas del PR (vulnerabilidades y licencias)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0-only, GPL-3.0-only, AGPL-3.0-only
+
+  semgrep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.185.0@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Análisis estático (Semgrep CE, reglas p/default)
+        run: semgrep scan --config p/default --metrics off --error
+
+  flujos:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: actionlint shellcheck zizmor
+          instalar-dependencias: 'false'
+      - run: actionlint
+      - run: zizmor --offline .github
+      - run: shellcheck .entorno .githooks/* scripts/*.sh .mise/tasks/android/* .mise/tasks/github/etiquetas .mise/tasks/entorno/envolturas .mise/tasks/supabase/*
+
+  especificacion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm lychee
+      - name: Formato de los .md públicos
+        run: pnpm run md:lint
+      - name: Enlaces de los .md públicos
+        run: lychee --no-progress --max-retries 3 ./*.md .github
+      - name: Ortografía del código y de los .md públicos
+        run: pnpm run spell
+
+  calidad:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm deno
+      - name: check (formato, sherif, lint, tipos, pruebas con cobertura, Knip, fronteras)
+        run: pnpm run check
+      - name: Build
+        run: pnpm run build
+      - name: Configuración de Cloudflare (despliegue de prueba, sin subir nada)
+        run: pnpm run cf:check
+      - name: Edge Functions (Deno)
+        run: deno check --config supabase/functions/api/deno.json supabase/functions/api/index.ts
+
+  base-de-datos:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: supabase github:sbdchd/squawk
+          instalar-dependencias: 'false'
+      - name: Lint de las migraciones (Squawk)
+        run: |
+          shopt -s nullglob
+          migraciones=(supabase/migrations/*.sql)
+          if [ ${#migraciones[@]} -eq 0 ]; then echo "Sin migraciones todavía."; exit 0; fi
+          squawk "${migraciones[@]}"
+      - name: Base de datos desde cero
+        run: supabase db start
+      - name: pgTAP (RLS y permisos por rol)
+        run: supabase test db
+      - name: Lint del esquema
+        run: supabase db lint --level warning --fail-on error
+
+  ci-ok:
+    if: always()
+    needs:
+      [versiones, convenciones, seguridad, semgrep, flujos, especificacion, calidad, base-de-datos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Resumen
+        env:
+          RESULTADOS: ${{ toJSON(needs.*.result) }}
+        run: |
+          if printf '%s' "$RESULTADOS" | grep -Eq '"(failure|cancelled)"'; then
+            echo "::error::Algún job falló o se canceló."
+            exit 1
+          fi

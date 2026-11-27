@@ -1,0 +1,14 @@
+'tipo:historia':
+  - head-branch: ['^feature/']
+'tipo:tecnico':
+  - head-branch: ['^tech/', '^spike/']
+'tipo:bug':
+  - head-branch: ['^fix/', '^hotfix/']
+'tipo:docs':
+  - head-branch: ['^docs/']
+'tipo:ci':
+  - head-branch: ['^ci/']
+'tipo:mantenimiento':
+  - head-branch: ['^chore/']
+dependencias:
+  - head-branch: ['^dependabot/']

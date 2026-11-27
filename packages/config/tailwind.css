@@ -1,0 +1,6 @@
+/* Tema compartido de Tailwind 4 (sitio y app). Los tokens del sistema de diseño se agregan aquí. */
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: system-ui, sans-serif;
+}

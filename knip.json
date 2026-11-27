@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["supabase"],
+  "ignoreDependencies": ["cspell", "markdownlint-cli2"],
+  "ignore": ["scripts/lib/secretos.mjs"],
+  "workspaces": {
+    ".": {
+      "entry": ["supabase/functions/*/index.ts", "scripts/*.mjs"]
+    }
+  }
+}

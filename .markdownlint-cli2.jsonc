@@ -1,0 +1,8 @@
+// Formato de los .md públicos (README, CONTRIBUTING, SECURITY, plantillas de .github).
+{
+  "config": {
+    "default": true,
+    "MD013": false, // los párrafos no se cortan a 80 columnas
+    "MD041": false, // la plantilla del PR empieza en "##": el título del PR hace de "#"
+  },
+}

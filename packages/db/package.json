@@ -1,0 +1,18 @@
+{
+  "name": "@katinails/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tipos de la base de datos generados con la CLI de Supabase (pnpm run gen).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "gen": "supabase gen types typescript --local --schema public > src/database.types.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@katinails/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

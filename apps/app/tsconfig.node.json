@@ -1,0 +1,8 @@
+{
+  "extends": "@katinails/config/tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts", "capacitor.config.ts", "config", "vitest.config.ts"]
+}

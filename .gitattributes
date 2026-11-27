@@ -1,0 +1,33 @@
+# Finales de línea LF en todo el repositorio, sin importar el sistema de quien clone.
+* text=auto eol=lf
+
+# Scripts de Windows (Gradle): CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binarios: sin conversión ni diff de texto
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.mp4 binary
+*.webm binary
+*.jar binary
+*.apk binary
+*.aab binary
+*.keystore binary
+*.jks binary
+
+# Archivos generados: sin diff en los PR y fuera de las estadísticas de GitHub
+pnpm-lock.yaml -diff linguist-generated=true
+mise.lock -diff linguist-generated=true
+supabase/functions/**/deno.lock -diff linguist-generated=true
+**/routeTree.gen.ts linguist-generated=true

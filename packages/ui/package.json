@@ -1,0 +1,21 @@
+{
+  "name": "@katinails/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sistema de diseño compartido (tokens y componentes). React se agrega con el primer componente.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@katinails/config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

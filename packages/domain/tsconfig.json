@@ -1,0 +1,7 @@
+{
+  "extends": "@katinails/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src", "vitest.config.ts"]
+}

@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+//MISE description="Carga en un environment de GitHub los secretos de su sección. Uso: mise run secretos:github -- staging"
+import {
+  ROOT,
+  fail,
+  openVault,
+  readSection,
+  resolveSection,
+  run,
+} from '../../../scripts/lib/secretos.mjs';
+
+const ENVIRONMENTS = ['staging', 'produccion', 'respaldo', 'respaldo-staging'];
+const environment = process.argv[2];
+if (!ENVIRONMENTS.includes(environment))
+  fail(`environment inválido. Usa: ${ENVIRONMENTS.join(', ')}`);
+
+const entries = readSection(`github.${environment}`);
+const vault = openVault();
+let loaded = 0;
+try {
+  const values = resolveSection(entries, vault);
+  for (const [name, value] of values) {
+    // gh lee el valor por la entrada estándar: nunca aparece en la línea de comandos.
+    const result = run('gh', ['secret', 'set', name, '--env', environment], { input: value });
+    if (result.status !== 0) fail(`gh no pudo guardar ${name} en ${environment}`);
+    console.log(`OK  ${name}`);
+    loaded++;
+  }
+} finally {
+  vault.lock();
+}
+console.log(
+  `${loaded} de ${entries.length} secretos cargados en el environment ${environment} (${ROOT})`,
+);

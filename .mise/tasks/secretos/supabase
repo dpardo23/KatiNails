@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+//MISE description="Carga los secretos de las Edge Functions de un proyecto. Uso: mise run secretos:supabase -- produccion"
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  ROOT,
+  fail,
+  openVault,
+  readSection,
+  resolveSection,
+  run,
+} from '../../../scripts/lib/secretos.mjs';
+
+const PROJECTS = ['staging', 'produccion'];
+const project = process.argv[2];
+if (!PROJECTS.includes(project)) fail(`proyecto inválido. Usa: ${PROJECTS.join(', ')}`);
+
+const entries = readSection(`supabase.${project}`);
+const vault = openVault();
+// supabase secrets set no lee la entrada estándar: archivo temporal 600 dentro del proyecto,
+// que se borra aunque la tarea falle o se interrumpa.
+const dir = mkdtempSync(join(ROOT, '.herramientas', 'secretos-'));
+const file = join(dir, 'secretos.env');
+const cleanup = () => rmSync(dir, { recursive: true, force: true });
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    cleanup();
+    vault.lock();
+    process.exit(130);
+  });
+}
+try {
+  const values = resolveSection(entries, vault);
+  const ref = values.get('SUPABASE_PROJECT_REF');
+  if (ref === undefined) fail(`falta SUPABASE_PROJECT_REF para ${project}`);
+  values.delete('SUPABASE_PROJECT_REF');
+  if (values.size === 0) fail('no hay secretos para cargar');
+  const body = [...values].map(([name, value]) => `${name}=${JSON.stringify(value)}`).join('\n');
+  writeFileSync(file, `${body}\n`, { mode: 0o600 });
+  const result = run('supabase', ['secrets', 'set', '--env-file', file, '--project-ref', ref], {
+    capture: false,
+  });
+  if (result.status !== 0) fail(`supabase no pudo cargar los secretos de ${project}`);
+  console.log(
+    `OK  ${values.size} secretos cargados en ${project}: ${[...values.keys()].join(', ')}`,
+  );
+} finally {
+  cleanup();
+  vault.lock();
+}

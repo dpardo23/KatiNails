@@ -1,0 +1,16 @@
+// App web (SPA) en Cloudflare Workers con archivos estáticos y fallback de SPA.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "katinails-app",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "../../apps/app/dist",
+    "not_found_handling": "single-page-application",
+  },
+  "workers_dev": false,
+  "preview_urls": true,
+  "observability": { "enabled": false },
+  "env": {
+    "staging": { "name": "katinails-app-staging" },
+  },
+}

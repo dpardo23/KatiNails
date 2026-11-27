@@ -1,0 +1,102 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2317  # "exit 1" solo corre si el archivo se ejecuta en vez de cargarse
+# Entorno del proyecto. Se carga en cada terminal, desde la raíz:
+#
+#   source ./.entorno
+#
+# Todo lo que instalan o guardan las herramientas (mise, pnpm, Java, Android,
+# Gradle, Playwright, Deno, CLI de Supabase, Bitwarden) queda en .herramientas/,
+# dentro del proyecto. Fuera de esta carpeta no se escribe nada.
+# No modifica ~/.zshrc. Funciona en zsh y bash.
+
+if [ ! -f "$PWD/.entorno" ] || [ ! -f "$PWD/mise.toml" ]; then
+  echo "FALLA: carga .entorno desde la raíz del proyecto (source ./.entorno)." >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+if [ -n "${PROYECTO_RAIZ:-}" ] && [ "$PROYECTO_RAIZ" != "$PWD" ]; then
+  echo "FALLA: esta terminal ya tiene cargado otro proyecto ($PROYECTO_RAIZ). Abre una terminal nueva." >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+export PROYECTO_RAIZ="$PWD"
+_h="$PROYECTO_RAIZ/.herramientas"
+
+# mise: herramientas, caché, estado y confianza dentro del proyecto.
+# Sin la configuración global de la máquina (~/.config/mise).
+export MISE_DATA_DIR="$_h/mise/data"
+export MISE_CACHE_DIR="$_h/mise/cache"
+export MISE_STATE_DIR="$_h/mise/state"
+export MISE_CONFIG_DIR="$_h/mise/config"
+export MISE_GLOBAL_CONFIG_FILE="$_h/mise/config/config.toml"
+export MISE_TRUSTED_CONFIG_PATHS="$PROYECTO_RAIZ"
+
+# Configuración, cachés, datos y estado de las herramientas que siguen la norma XDG
+# (pnpm, Turborepo, Capacitor, etc.). Con XDG_CONFIG_HOME propio, git tampoco lee la lista
+# global de ignorados (~/.config/git/ignore): aquí solo vale .git/info/exclude.
+# gh sigue usando su sesión del sistema.
+export GH_CONFIG_DIR="${GH_CONFIG_DIR:-$HOME/.config/gh}"
+export XDG_CONFIG_HOME="$_h/xdg/config"
+export XDG_CACHE_HOME="$_h/xdg/cache"
+export XDG_DATA_HOME="$_h/xdg/data"
+export XDG_STATE_HOME="$_h/xdg/state"
+
+# Node y pnpm
+export npm_config_cache="$_h/npm-cache"
+export PNPM_HOME="$_h/pnpm-home"
+export COREPACK_HOME="$_h/corepack"
+export NODE_REPL_HISTORY="$_h/node_repl_history"
+
+# Java y Android (JAVA_HOME lo fija mise con el JDK de mise.toml)
+export GRADLE_USER_HOME="$_h/gradle"
+# Preferencias de Java (java.util.prefs): por defecto van a ~/.java/.userPrefs
+export JAVA_TOOL_OPTIONS="-Djava.util.prefs.userRoot=$_h/java-prefs"
+export ANDROID_HOME="$_h/android-sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+# Las herramientas nuevas leen ANDROID_USER_HOME; la analítica de Gradle, ANDROID_PREFS_ROOT (su carpeta padre)
+export ANDROID_PREFS_ROOT="$_h/android-prefs"
+export ANDROID_USER_HOME="$ANDROID_PREFS_ROOT/.android"
+export ANDROID_EMULATOR_HOME="$ANDROID_USER_HOME"
+export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
+
+# Pruebas y runtime de las Edge Functions
+export PLAYWRIGHT_BROWSERS_PATH="$_h/ms-playwright"
+export DENO_DIR="$_h/deno"
+
+# CLI de Supabase y Bitwarden
+export SUPABASE_HOME="$_h/supabase"
+export BITWARDENCLI_APPDATA_DIR="$_h/bitwarden"
+
+# Sin telemetría (así tampoco escriben en ~/.config)
+export DO_NOT_TRACK=1
+export SUPABASE_TELEMETRY_DISABLED=1
+export ASTRO_TELEMETRY_DISABLED=1
+export TURBO_TELEMETRY_DISABLED=1
+export NEXT_TELEMETRY_DISABLED=1
+export WRANGLER_SEND_METRICS=false
+export WRANGLER_LOG_PATH="$_h/wrangler-logs"
+
+# Binarios del proyecto primero: SDK de Android y paquetes globales de pnpm
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" ;;
+esac
+
+mkdir -p "$MISE_DATA_DIR" "$MISE_CACHE_DIR" "$MISE_STATE_DIR" "$MISE_CONFIG_DIR" \
+  "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$npm_config_cache" "$PNPM_HOME" \
+  "$GRADLE_USER_HOME" "$ANDROID_HOME" "$ANDROID_USER_HOME" "$SUPABASE_HOME" "$BITWARDENCLI_APPDATA_DIR"
+chmod 700 "$BITWARDENCLI_APPDATA_DIR"
+
+# Activa mise con estas carpetas (si la terminal ya lo tenía activado, lo reemplaza)
+if command -v mise >/dev/null 2>&1; then
+  if [ -n "${ZSH_VERSION:-}" ]; then
+    eval "$(mise activate zsh)"
+  elif [ -n "${BASH_VERSION:-}" ]; then
+    eval "$(mise activate bash)"
+  fi
+else
+  echo "AVISO: falta mise: instala mise (https://mise.jdx.dev) y vuelve a cargar el entorno." >&2
+fi
+
+unset _h
+echo "OK: entorno del proyecto cargado (herramientas en .herramientas/)."

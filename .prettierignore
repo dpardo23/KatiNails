@@ -1,0 +1,11 @@
+/.herramientas/
+pnpm-lock.yaml
+mise.lock
+dist/
+coverage/
+.astro/
+.turbo/
+apps/app/android/
+apps/app/src/routeTree.gen.ts
+packages/db/src/database.types.ts
+supabase/.temp/

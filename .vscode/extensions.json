@@ -1,0 +1,19 @@
+{
+  "recommendations": [
+    "hverlin.mise-vscode",
+    "editorconfig.editorconfig",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "astro-build.astro-vscode",
+    "bradlc.vscode-tailwindcss",
+    "vitest.explorer",
+    "denoland.vscode-deno",
+    "davidanson.vscode-markdownlint",
+    "streetsidesoftware.code-spell-checker",
+    "timonwong.shellcheck",
+    "github.vscode-github-actions",
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml",
+    "docker.docker"
+  ]
+}

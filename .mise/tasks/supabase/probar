@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Corre las pruebas pgTAP contra Supabase local (red de Docker propia)"
+set -euo pipefail
+supabase test db --network-id katinails-v2-local

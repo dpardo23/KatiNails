@@ -1,0 +1,13 @@
+# Encabezados de seguridad del sitio. Cloudflare los aplica a cada respuesta.
+# script-src y style-src NO van aquí: Astro los pone en un <meta> con los hashes de cada página.
+/*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  X-Frame-Options: DENY
+  Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+
+# Archivos con huella de Astro: se guardan un año
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

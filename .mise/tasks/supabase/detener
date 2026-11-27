@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Detiene Supabase local y conserva los datos (para borrarlos: supabase stop --no-backup)"
+set -euo pipefail
+supabase stop

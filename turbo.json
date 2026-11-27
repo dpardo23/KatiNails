@@ -1,0 +1,51 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["packages/config/tsconfig.base.json", "eslint.config.js"],
+  "globalPassThroughEnv": [
+    "PROYECTO_RAIZ",
+    "XDG_CONFIG_HOME",
+    "XDG_CACHE_HOME",
+    "XDG_DATA_HOME",
+    "XDG_STATE_HOME",
+    "npm_config_cache",
+    "PNPM_HOME",
+    "COREPACK_HOME",
+    "JAVA_HOME",
+    "JAVA_TOOL_OPTIONS",
+    "GRADLE_USER_HOME",
+    "ANDROID_HOME",
+    "ANDROID_SDK_ROOT",
+    "ANDROID_USER_HOME",
+    "ANDROID_PREFS_ROOT",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "DENO_DIR",
+    "SUPABASE_HOME",
+    "DO_NOT_TRACK",
+    "SUPABASE_TELEMETRY_DISABLED",
+    "ASTRO_TELEMETRY_DISABLED",
+    "TURBO_TELEMETRY_DISABLED",
+    "WRANGLER_SEND_METRICS",
+    "WRANGLER_LOG_PATH"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/*.test.tsx"],
+      "outputs": ["dist/**"],
+      "env": ["VITE_*"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "lint": {
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

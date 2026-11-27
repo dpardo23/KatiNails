@@ -1,0 +1,19 @@
+# Etiquetas del repositorio. Se sincronizan con: mise run github:etiquetas
+- { name: 'tipo:historia', color: '1d76db', description: 'Historia de usuario' }
+- { name: 'tipo:tecnico', color: '5319e7', description: 'Ítem técnico o spike' }
+- { name: 'tipo:bug', color: 'd73a4a', description: 'Falla' }
+- { name: 'tipo:docs', color: '0075ca', description: 'Documentación' }
+- { name: 'tipo:ci', color: '6e7781', description: 'Pipeline' }
+- { name: 'tipo:mantenimiento', color: 'c5def5', description: 'Mantenimiento' }
+- { name: 'dependencias', color: '0366d6', description: 'Actualización de dependencias' }
+- { name: 'prioridad:debe', color: 'b60205', description: 'MoSCoW: debe' }
+- { name: 'prioridad:deberia', color: 'fbca04', description: 'MoSCoW: debería' }
+- { name: 'prioridad:podria', color: 'c2e0c6', description: 'MoSCoW: podría' }
+- { name: 'severidad:critica', color: 'b60205', description: 'Bug crítico' }
+- { name: 'severidad:alta', color: 'd93f0b', description: 'Bug de severidad alta' }
+- { name: 'severidad:media', color: 'fbca04', description: 'Bug de severidad media' }
+- { name: 'severidad:baja', color: 'c2e0c6', description: 'Bug de severidad baja' }
+- { name: 'respaldo', color: '0e8a16', description: 'Aviso automático del respaldo' }
+- { name: 'staging-fallo', color: 'e99695', description: 'Aviso automático de staging' }
+- { name: 'video-desactualizado', color: 'f9d0c4', description: 'Video de ayuda por actualizar' }
+- { name: 'seguridad', color: 'b60205', description: 'Aviso de seguridad' }

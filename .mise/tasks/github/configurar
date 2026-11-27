@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+//MISE description="Configura GitHub desde infra/github (repositorio, seguridad, Actions, environments y rulesets). Sin flags muestra las diferencias; --aplicar las aplica; --reglas aplica también los rulesets (después del primer push)"
+import { spawnSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const ROOT = process.env.PROYECTO_RAIZ;
+if (!ROOT) {
+  console.error('FALLA: carga el entorno primero (source ./.entorno)');
+  process.exit(1);
+}
+const apply = process.argv.includes('--aplicar');
+const withRules = process.argv.includes('--reglas');
+const dir = join(ROOT, 'infra', 'github');
+const read = (file) => JSON.parse(readFileSync(join(dir, file), 'utf8'));
+
+function gh(args, input) {
+  const result = spawnSync('gh', args, { encoding: 'utf8', input });
+  if (result.status !== 0) throw new Error(`gh ${args.join(' ')}: ${result.stderr.trim()}`);
+  return result.stdout.trim() ? JSON.parse(result.stdout) : null;
+}
+const api = (method, path, body) =>
+  gh(
+    ['api', '--method', method, path, ...(body ? ['--input', '-'] : [])],
+    body ? JSON.stringify(body) : undefined,
+  );
+
+const repo = gh(['repo', 'view', '--json', 'nameWithOwner']).nameWithOwner;
+const base = `repos/${repo}`;
+let pending = 0;
+
+function compare(label, current, desired) {
+  for (const [key, value] of Object.entries(desired)) {
+    const now = current?.[key];
+    if (JSON.stringify(now) !== JSON.stringify(value)) {
+      pending += 1;
+      console.log(`CAMBIA  ${label}.${key}: ${JSON.stringify(now)} → ${JSON.stringify(value)}`);
+    }
+  }
+}
+
+function step(label, run) {
+  if (!apply) return;
+  run();
+  console.log(`OK      ${label}`);
+}
+
+// 1. Repositorio y seguridad
+const repoDesired = read('repositorio.json');
+const { security_and_analysis: securityDesired, ...settingsDesired } = repoDesired;
+const repoNow = api('GET', base);
+compare('repositorio', repoNow, settingsDesired);
+compare('seguridad', repoNow.security_and_analysis, securityDesired);
+step('repositorio y escaneo de secretos', () => api('PATCH', base, repoDesired));
+
+const flags = {
+  'vulnerability-alerts': 'alertas de Dependabot',
+  'automated-security-fixes': 'actualizaciones de seguridad de Dependabot',
+  'private-vulnerability-reporting': 'reporte privado de vulnerabilidades',
+};
+for (const [path, label] of Object.entries(flags)) {
+  let enabled = false;
+  try {
+    const now = api('GET', `${base}/${path}`);
+    enabled = now === null || now.enabled === true;
+  } catch {
+    enabled = false;
+  }
+  if (!enabled) {
+    pending += 1;
+    console.log(`CAMBIA  ${label}: desactivado → activado`);
+  }
+  step(label, () => api('PUT', `${base}/${path}`));
+}
+
+// 2. Actions
+const actions = read('acciones.json');
+compare('acciones', api('GET', `${base}/actions/permissions`), actions.permisos);
+step('acciones permitidas y fijadas por SHA', () => {
+  api('PUT', `${base}/actions/permissions`, actions.permisos);
+  api('PUT', `${base}/actions/permissions/selected-actions`, actions.acciones_permitidas);
+});
+compare('flujos', api('GET', `${base}/actions/permissions/workflow`), actions.flujos);
+step('permisos del GITHUB_TOKEN', () =>
+  api('PUT', `${base}/actions/permissions/workflow`, actions.flujos),
+);
+step('aprobación de PR desde forks', () =>
+  api('PUT', `${base}/actions/permissions/fork-pr-contributor-approval`, actions.forks),
+);
+
+// 3. Environments
+const owner = gh(['api', 'user']).id;
+for (const [name, env] of Object.entries(read('entornos.json'))) {
+  const custom = env.ramas !== null;
+  const body = {
+    prevent_self_review: false,
+    reviewers: env.revision ? [{ type: 'User', id: owner }] : [],
+    deployment_branch_policy: custom
+      ? { protected_branches: false, custom_branch_policies: true }
+      : null,
+  };
+  let exists = true;
+  try {
+    api('GET', `${base}/environments/${name}`);
+  } catch {
+    exists = false;
+    pending += 1;
+    console.log(`CAMBIA  environment ${name}: no existe → se crea`);
+  }
+  step(`environment ${name}`, () => {
+    api('PUT', `${base}/environments/${name}`, body);
+    if (!custom) return;
+    const policies = `${base}/environments/${name}/deployment-branch-policies`;
+    const current = api('GET', policies).branch_policies.map((p) => `${p.type}:${p.name}`);
+    const wanted = [
+      ...env.ramas.map((n) => ({ name: n, type: 'branch' })),
+      ...env.etiquetas.map((n) => ({ name: n, type: 'tag' })),
+    ];
+    for (const policy of wanted) {
+      if (!current.includes(`${policy.type}:${policy.name}`)) api('POST', policies, policy);
+    }
+  });
+}
+
+// 4. Rulesets (solo con --reglas: exigen que main y develop ya existan en GitHub)
+const rulesDir = join(dir, 'rulesets');
+const existing = api('GET', `${base}/rulesets`);
+for (const file of readdirSync(rulesDir).filter((f) => f.endsWith('.json'))) {
+  const ruleset = JSON.parse(readFileSync(join(rulesDir, file), 'utf8'));
+  const found = existing.find((r) => r.name === ruleset.name);
+  if (!found) {
+    pending += 1;
+    console.log(
+      `CAMBIA  ruleset ${ruleset.name}: no existe → se crea${withRules ? '' : ' (con --reglas)'}`,
+    );
+  }
+  if (apply && withRules) {
+    if (found) api('PUT', `${base}/rulesets/${found.id}`, ruleset);
+    else api('POST', `${base}/rulesets`, ruleset);
+    console.log(`OK      ruleset ${ruleset.name}`);
+  }
+}
+
+if (!apply) {
+  console.log(
+    pending === 0
+      ? 'Sin diferencias.'
+      : `${pending} diferencias. Para aplicarlas: mise run github:configurar -- --aplicar`,
+  );
+}

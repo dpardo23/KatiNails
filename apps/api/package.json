@@ -1,0 +1,24 @@
+{
+  "name": "@katinails/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API de comandos (Hono). Se despliega como la Edge Function supabase/functions/api.",
+  "exports": {
+    ".": "./src/app.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "@katinails/config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

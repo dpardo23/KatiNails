@@ -1,0 +1,77 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Cadena de suministro
+minimumReleaseAge: 20160 # 14 días, en minutos
+minimumReleaseAgeStrict: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # workbox-build 7.4.1 (vite-plugin-pwa) depende de este fork desde el PR oficial GoogleChrome/workbox#3446.
+  # La versión 3.0.0-pre1 se publicó sin procedencia; 2.5.0 sí la tenía. Revisado el 26 nov 2026.
+  # Se quita cuando workbox-build use una versión con procedencia.
+  - '@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1'
+blockExoticSubdeps: true
+strictDepBuilds: true
+engineStrict: true # Node distinto del de mise.toml = error, no aviso
+# Solo estos paquetes pueden ejecutar scripts de instalación
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true # wrangler
+
+# Una sola versión de cada dependencia en todo el monorepo (sherif lo controla)
+catalog:
+  # Lenguaje y monorepo
+  typescript: ~6.0.3
+  turbo: 2.11.11
+  '@types/node': 24.19.2
+  # Sitio público
+  astro: 7.4.11
+  '@astrojs/react': 7.1.8
+  '@astrojs/mdx': 8.1.5
+  '@astrojs/sitemap': 3.7.4
+  '@astrojs/check': 0.9.12
+  # App
+  react: 19.3.1
+  react-dom: 19.3.1
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  vite: 8.3.8
+  '@vitejs/plugin-react': 6.3.0
+  vite-plugin-pwa: 2.0.0
+  tailwindcss: 4.3.5
+  '@tailwindcss/vite': 4.3.5
+  '@tanstack/react-router': 1.170.46
+  '@tanstack/router-plugin': 1.169.0
+  '@tanstack/react-query': 5.107.1
+  '@capacitor/core': 8.6.2
+  '@capacitor/cli': 8.6.2
+  '@capacitor/android': 8.6.2
+  # API y contratos
+  hono: 4.13.18
+  zod: 4.6.7
+  # Calidad
+  vitest: 5.1.0
+  '@vitest/coverage-v8': 5.1.0
+  eslint: 10.14.0
+  '@eslint/js': 10.0.1
+  typescript-eslint: 8.72.2
+  eslint-plugin-astro: 3.2.1
+  eslint-plugin-react-hooks: 7.1.1
+  eslint-plugin-jsx-a11y-x: 0.2.0
+  globals: 17.14.0
+  prettier: 3.10.1
+  prettier-plugin-astro: 1.1.2
+  prettier-plugin-tailwindcss: 0.8.1
+  '@commitlint/cli': 21.2.4
+  '@commitlint/config-conventional': 21.2.4
+  knip: 6.45.1
+  sherif: 1.13.0
+  dependency-cruiser: 18.7.2
+  markdownlint-cli2: 0.24.1
+  cspell: 10.4.1
+  '@cspell/dict-es-es': 3.0.9
+  # Despliegue y tareas
+  wrangler: 4.161.0
+  smol-toml: 1.9.1

@@ -1,0 +1,41 @@
+{
+  "name": "@katinails/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "App web (PWA de clientas) y APK del personal con Capacitor.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:android": "vite build --mode android && cap sync android",
+    "preview": "vite preview",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc -b",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@capacitor/android": "catalog:",
+    "@capacitor/core": "catalog:",
+    "@katinails/config": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}

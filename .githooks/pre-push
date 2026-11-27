@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Revisiones rápidas antes de subir. E2E, Lighthouse y Android quedan en el CI.
+set -euo pipefail
+
+if [ -z "${PROYECTO_RAIZ:-}" ]; then
+  echo "pre-push: FALLA: carga el entorno primero (source ./.entorno)." >&2
+  exit 1
+fi
+
+pnpm run check

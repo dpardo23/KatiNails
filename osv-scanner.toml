@@ -1,0 +1,18 @@
+# Vulnerabilidades aceptadas, cada una con su motivo y vencimiento.
+# Revisadas el 27 nov 2026. Al vencer, OSV-Scanner vuelve a fallar y se revisan de nuevo.
+# Las tres llegan solo por herramientas de desarrollo y no se distribuyen en la app ni en el sitio.
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4" # glob 11.1.0, moderada. Vía workbox-build 7.4.1 (vite-plugin-pwa), al compilar.
+ignoreUntil = 2026-12-27
+reason = "Solo en el build sobre archivos propios; workbox-build pide glob ^11 y la corrección es la 14"
+
+[[IgnoredVulns]]
+id = "GHSA-238p-pmpm-9mq7" # katex 0.16.47, baja. Vía markdownlint-cli2.
+ignoreUntil = 2026-12-27
+reason = "Solo en el lint de Markdown propio; micromark-extension-math pide katex ^0.16 y la corrección es la 0.18"
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249" # minimatch 10.2.6, moderada. Vía ESLint 10.
+ignoreUntil = 2026-12-27
+reason = "Patrones de la configuración propia, no de terceros; @eslint/config-array pide ^10 y la corrección es la 11"

@@ -1,0 +1,17 @@
+// Sitio público en Cloudflare Workers con archivos estáticos, sin código de Worker.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "katinails-web",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "../../apps/web/dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash",
+  },
+  "workers_dev": false,
+  "preview_urls": true,
+  "observability": { "enabled": false },
+  "env": {
+    "staging": { "name": "katinails-web-staging" },
+  },
+}

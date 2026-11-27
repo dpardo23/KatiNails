@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Rechaza archivos ignorados (aunque se fuercen con git add -f) y secretos.
+set -euo pipefail
+
+if [ -z "${PROYECTO_RAIZ:-}" ]; then
+  echo "pre-commit: FALLA: carga el entorno primero (source ./.entorno)." >&2
+  exit 1
+fi
+
+# 1. Ningún archivo ignorado (.gitignore o .git/info/exclude) entra al commit.
+ignorados="$(git diff --cached --name-only -z --diff-filter=ACMR | git check-ignore --no-index -z --stdin | tr '\0' '\n' || true)"
+if [ -n "$ignorados" ]; then
+  echo "pre-commit: FALLA: hay archivos ignorados en el commit:" >&2
+  printf '%s\n' "$ignorados" | sed 's/^/  /' >&2
+  echo "Sácalos con: git restore --staged <archivo>" >&2
+  exit 1
+fi
+
+# 2. Secretos en lo que se va a guardar (el repositorio es público).
+gitleaks git --pre-commit --staged --redact --no-banner --exit-code 1

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#MISE description="Instala el Android SDK fijado en ANDROID_HOME (dentro del proyecto). Uso: mise run android:sdk -- --aceptar-licencias"
+# Versiones fijas. Sin emulador.
+# Desde cmdline-tools 23, sdkmanager está obsoleto: se usa la Android CLI (`android sdk`), sin métricas.
+set -euo pipefail
+
+CMDLINE_TOOLS_ZIP="commandlinetools-linux-16111833_latest.zip"   # cmdline-tools 23.0
+CMDLINE_TOOLS_SHA1="e025545c62a8e64c7559119566a569fb1dec5f60"     # repository2-3.xml de Google
+PAQUETES=(
+  "platform-tools@37.0.3"
+  "platforms/android-36@2.0.0"
+  "build-tools/36.0.0@36.0.0"
+)
+
+: "${ANDROID_HOME:?FALLA: carga el entorno primero (source ./.entorno)}"
+case "$ANDROID_HOME" in
+  "${PROYECTO_RAIZ:?FALLA: carga el entorno primero (source ./.entorno)}"/*) ;;
+  *) echo "FALLA: ANDROID_HOME está fuera del proyecto ($ANDROID_HOME)." >&2; exit 1 ;;
+esac
+
+if [ "${1:-}" != "--aceptar-licencias" ]; then
+  echo "Instalar el SDK exige aceptar las licencias de Android (https://developer.android.com/studio/terms)."
+  echo "Si estás de acuerdo: mise run android:sdk -- --aceptar-licencias"
+  exit 1
+fi
+
+android_cli="$ANDROID_HOME/cmdline-tools/latest/bin/android"
+if [ ! -x "$android_cli" ]; then
+  tmp="$(mktemp -d "$PROYECTO_RAIZ/.herramientas/android-tmp.XXXXXX")"
+  trap 'rm -rf "$tmp"' EXIT
+  curl -fsSL --proto '=https' -o "$tmp/cmdline-tools.zip" "https://dl.google.com/android/repository/$CMDLINE_TOOLS_ZIP"
+  echo "$CMDLINE_TOOLS_SHA1  $tmp/cmdline-tools.zip" | sha1sum -c --quiet
+  unzip -q "$tmp/cmdline-tools.zip" -d "$tmp"
+  mkdir -p "$ANDROID_HOME/cmdline-tools"
+  rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+  mv "$tmp/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+fi
+
+"$android_cli" --no-metrics --sdk="$ANDROID_HOME" sdk install "${PAQUETES[@]}"
+"$android_cli" --no-metrics --sdk="$ANDROID_HOME" sdk list

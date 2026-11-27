@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#MISE description="Levanta Supabase local con los puertos solo en 127.0.0.1 (red de Docker propia)"
+# La CLI publica en 0.0.0.0 por defecto. Solución oficial: red con host_binding_ipv4 (supabase/cli#1397).
+set -euo pipefail
+
+red="katinails-v2-local"
+if ! docker network inspect "$red" >/dev/null 2>&1; then
+  docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' "$red" >/dev/null
+fi
+supabase start --network-id "$red"
+
+expuestos="$(ss -ltnH | awk '{print $4}' | grep -E ':5632[0-9]$' | grep -v '^127\.0\.0\.1:' || true)"
+if [ -n "$expuestos" ]; then
+  echo "FALLA: hay puertos de Supabase fuera de 127.0.0.1: $expuestos" >&2
+  supabase stop
+  exit 1
+fi
+echo "OK: Supabase local solo en 127.0.0.1"

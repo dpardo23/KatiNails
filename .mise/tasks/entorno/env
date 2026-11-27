@@ -1,0 +1,61 @@
+#!/usr/bin/env node
+//MISE description="Crea .env.local (permisos 600) con la sección [local] de infra/secretos.toml. No reemplaza uno existente. --sin-bitwarden: solo valores locales"
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  ROOT,
+  fail,
+  openVault,
+  readSection,
+  resolveSection,
+  run,
+} from '../../../scripts/lib/secretos.mjs';
+
+const target = join(ROOT, '.env.local');
+const entries = readSection('local');
+
+// Valores de Supabase local: solo nombres de campo, nunca se imprimen.
+let status;
+function supabaseField(where) {
+  if (status === undefined) {
+    const result = run('supabase', ['status', '-o', 'env']);
+    if (result.status !== 0) fail('Supabase local no está en marcha (mise run supabase:iniciar)');
+    status = new Map(
+      result.stdout
+        .split('\n')
+        .map((line) => /^([A-Z0-9_]+)="?(.*?)"?$/.exec(line))
+        .filter((match) => match !== null)
+        .map((match) => [match[1], match[2]]),
+    );
+  }
+  const slash = where.indexOf('/');
+  const field = slash === -1 ? where : where.slice(0, slash);
+  const suffix = slash === -1 ? '' : where.slice(slash);
+  const value = status.get(field);
+  return value === undefined ? undefined : `${value}${suffix}`;
+}
+
+// --sin-bitwarden: para preparar el entorno antes de tener las cuentas; lo que falta se avisa.
+const withoutVault = process.argv.includes('--sin-bitwarden');
+const needsVault = !withoutVault && entries.some((entry) => entry.kind === 'bitwarden');
+const vault = needsVault ? openVault() : undefined;
+try {
+  const values = resolveSection(entries, vault, { supabase: supabaseField });
+  const lines = [
+    '# Creado por `mise run entorno:env`. No se sube.',
+    ...entries.map(({ name }) => `${name}=${values.get(name) ?? ''}`),
+    '',
+  ];
+  try {
+    // flag "wx": falla si ya existe (regla 2). mode 0o600: solo la persona dueña lo lee.
+    writeFileSync(target, lines.join('\n'), { mode: 0o600, flag: 'wx' });
+  } catch (error) {
+    if (error.code === 'EEXIST') fail('.env.local ya existe: bórralo a mano si quieres recrearlo');
+    throw error;
+  }
+  console.log(
+    `OK  .env.local creado con ${values.size} de ${entries.length} variables (permisos 600)`,
+  );
+} finally {
+  vault?.lock();
+}

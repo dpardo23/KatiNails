@@ -1,0 +1,51 @@
+{
+  "name": "katinails",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.17.0",
+  "engines": {
+    "node": "24.22.3",
+    "pnpm": "12.17.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "git ls-files -z --cached --others --exclude-standard | xargs -0 prettier --write --ignore-unknown",
+    "format:check": "git ls-files -z --cached --others --exclude-standard | xargs -0 prettier --check --ignore-unknown",
+    "knip": "knip",
+    "sherif": "sherif",
+    "deps:check": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "md:lint": "git ls-files -z --cached --others --exclude-standard '*.md' '.github/**/*.md' | xargs -0 markdownlint-cli2",
+    "check": "pnpm run format:check && pnpm run sherif && pnpm run lint:raiz && turbo run lint typecheck test && pnpm run knip && pnpm run deps:check",
+    "cf:check": "wrangler deploy --dry-run --env= -c infra/wrangler/web.jsonc && wrangler deploy --dry-run --env= -c infra/wrangler/app.jsonc",
+    "spell": "git ls-files -z --cached --others --exclude-standard | xargs -0 cspell --no-progress --no-must-find-files",
+    "lint:raiz": "eslint --max-warnings=0 scripts eslint.config.js commitlint.config.mjs .dependency-cruiser.cjs"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "@cspell/dict-es-es": "catalog:",
+    "@eslint/js": "catalog:",
+    "cspell": "catalog:",
+    "dependency-cruiser": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-astro": "catalog:",
+    "eslint-plugin-jsx-a11y-x": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "globals": "catalog:",
+    "knip": "catalog:",
+    "markdownlint-cli2": "catalog:",
+    "prettier": "catalog:",
+    "prettier-plugin-astro": "catalog:",
+    "prettier-plugin-tailwindcss": "catalog:",
+    "sherif": "catalog:",
+    "smol-toml": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

@@ -1,0 +1,21 @@
+# Ortografía del código y de los .md públicos: nombres en inglés, comentarios en español.
+$schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+version: '0.2'
+language: en,es
+import:
+  - '@cspell/dict-es-es/cspell-ext.json'
+dictionaryDefinitions:
+  - name: proyecto
+    path: ./.cspell/proyecto.txt
+    addWords: true
+dictionaries: [proyecto]
+ignorePaths:
+  - .herramientas/**
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/coverage/**'
+  - pnpm-lock.yaml
+  - mise.lock
+  - '**/*.gen.ts'
+  - apps/app/android/**
+  - .cspell/**

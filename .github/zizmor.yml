@@ -1,0 +1,7 @@
+# Configuración de zizmor (seguridad de los workflows).
+rules:
+  self-repository:
+    # La sintaxis `uses: $/…` (GitHub, jul 2026) todavía no la acepta actionlint 1.7.12.
+    # Riesgo bajo: ningún paso modifica .github/ antes de usar la acción local.
+    # Se activa cuando actionlint admita `$/` (revisar en cada actualización de actionlint).
+    disable: true

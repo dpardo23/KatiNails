@@ -1,0 +1,6 @@
+{
+  "staging": { "ramas": ["develop"], "etiquetas": [], "revision": false },
+  "produccion": { "ramas": [], "etiquetas": ["v*"], "revision": true },
+  "respaldo": { "ramas": ["develop"], "etiquetas": ["v*"], "revision": false },
+  "respaldo-staging": { "ramas": null, "etiquetas": null, "revision": false }
+}

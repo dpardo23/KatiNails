@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# Secretos, llaves y credenciales (el repositorio es público)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+# Secretos locales de Wrangler
+.dev.vars
+.dev.vars.*
+# Llaves, certificados y almacenes de llaves
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.keystore
+*.jks
+keystore.properties
+*.age.key
+service-account*.json
+# Sesiones guardadas de Playwright (llevan cookies y tokens)
+playwright/.auth/
+# Volcados y copias de bases de datos
+*.dump
+*.sql.gz
+*.backup
+
+# ---------------------------------------------------------------------------
+# Herramientas, cachés y datos locales del entorno (.entorno)
+# ---------------------------------------------------------------------------
+/.herramientas/
+mise.local.toml
+.mise.local.toml
+
+# ---------------------------------------------------------------------------
+# Dependencias, builds y cachés
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+dist/
+build/
+.turbo/
+.astro/
+.vite/
+.wrangler/
+*.tsbuildinfo
+.eslintcache
+.cspellcache
+.cache/
+
+# ---------------------------------------------------------------------------
+# Pruebas e informes
+# ---------------------------------------------------------------------------
+coverage/
+playwright-report/
+blob-report/
+test-results/
+playwright/.cache/
+.lighthouseci/
+.stryker-tmp/
+reports/mutation/
+
+# ---------------------------------------------------------------------------
+# Android (además de apps/app/android/.gitignore)
+# ---------------------------------------------------------------------------
+*.apk
+*.aab
+*.hprof
+.gradle/
+local.properties
+
+# ---------------------------------------------------------------------------
+# Supabase local
+# ---------------------------------------------------------------------------
+supabase/.temp/
+supabase/.branches/
+.supabase/
+
+# ---------------------------------------------------------------------------
+# Editores: solo se comparten los ajustes y las extensiones recomendadas
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+
+# ---------------------------------------------------------------------------
+# Sistema y registros
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.log
