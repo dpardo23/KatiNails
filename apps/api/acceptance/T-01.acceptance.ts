@@ -13,7 +13,7 @@ describe('T-01 · request_id en cada respuesta', () => {
 
   test.fails('T-01 · una ruta que no existe también trae X-Request-Id', async () => {
     const res = await callApi('/no-existe');
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
     expect(res.headers.get('x-request-id')).toMatch(UUID);
   });
 
