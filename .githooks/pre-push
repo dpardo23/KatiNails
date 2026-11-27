@@ -8,3 +8,5 @@ if [ -z "${PROYECTO_RAIZ:-}" ]; then
 fi
 
 pnpm run check
+pnpm run spell
+pnpm run md:lint
