@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Sincroniza las etiquetas de .github/labels.yml con GitHub (crea o actualiza; no borra)"
+#MISE description="Sincroniza las etiquetas de .github/labels.yml con GitHub (crea o actualiza). Con --podar borra las que no están en el archivo"
 set -euo pipefail
 
 archivo=".github/labels.yml"
@@ -11,3 +11,14 @@ grep -E '^- \{' "$archivo" | while IFS= read -r linea; do
   gh label create "$nombre" --color "$color" --description "$descripcion" --force >/dev/null
   echo "OK  $nombre"
 done
+
+# --podar: borra de GitHub las etiquetas que no están en labels.yml (por ejemplo, las que GitHub crea por defecto).
+if [ "${1:-}" = "--podar" ]; then
+  deseadas="$(grep -E '^- \{' "$archivo" | sed -E "s/.*name: '([^']+)'.*/\1/")"
+  gh label list --limit 200 --json name --jq '.[].name' | while IFS= read -r nombre; do
+    if ! grep -qxF "$nombre" <<<"$deseadas"; then
+      gh label delete "$nombre" --yes >/dev/null
+      echo "BORRADA  $nombre"
+    fi
+  done
+fi
