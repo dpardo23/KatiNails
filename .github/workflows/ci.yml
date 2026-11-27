@@ -231,6 +231,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
+      - name: Reserva los puertos de Supabase (primer paso, antes de cualquier descarga)
+        # 5632x cae en el rango de puertos efímeros de Linux (32768-60999): una conexión de salida
+        # (por ejemplo, una descarga) puede usar ese puerto. Reservado, el sistema ya no lo asigna.
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=56320-56329
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -243,16 +247,16 @@ jobs:
           migraciones=(supabase/migrations/*.sql)
           if [ ${#migraciones[@]} -eq 0 ]; then echo "Sin migraciones todavía."; exit 0; fi
           squawk "${migraciones[@]}"
-      - name: Puertos de Supabase reservados y libres
-        # 5632x cae en el rango de puertos efímeros de Linux (32768-60999): una conexión de salida
-        # (por ejemplo, la descarga de imágenes de Docker) puede usar ese puerto. La reserva lo evita.
+      - name: Puertos de Supabase libres
+        # Una conexión abierta antes de la reserva se cierra sola (TIME_WAIT dura 60 s): se espera hasta 2 min.
         run: |
-          sudo sysctl -w net.ipv4.ip_local_reserved_ports=56320-56329
-          ocupados="$(ss -tanH | awk '{print $4}' | grep -E ':5632[0-9]$' || true)"
-          if [ -n "$ocupados" ]; then
-            echo "::error::Puertos de Supabase ocupados: $ocupados"
-            exit 1
-          fi
+          for _ in $(seq 1 24); do
+            ocupados="$(ss -tanH | awk '{print $4}' | grep -E ':5632[0-9]$' || true)"
+            if [ -z "$ocupados" ]; then echo "Libres."; exit 0; fi
+            sleep 5
+          done
+          echo "::error::Puertos de Supabase ocupados: $ocupados"
+          exit 1
       - name: Supabase desde cero (base, API de datos, Auth y Edge Functions)
         run: supabase start -x studio,imgproxy,mailpit,logflare,vector,realtime,storage-api,supavisor,postgres-meta
       - name: pgTAP (RLS y permisos por rol)
