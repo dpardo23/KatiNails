@@ -15,7 +15,8 @@ export function requestId(): MiddlewareHandler<{ Variables: RequestIdVariables }
   return async (c, next) => {
     const id = crypto.randomUUID();
     c.set('requestId', id);
-    c.header(HEADER, id);
     await next();
+    // Después de next(): así lo lleva también una ruta que devuelve un Response propio.
+    c.res.headers.set(HEADER, id);
   };
 }
