@@ -13,6 +13,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:acceptance": "turbo run test:acceptance",
     "format": "git ls-files -z --cached --others --exclude-standard | xargs -0 prettier --write --ignore-unknown",
     "format:check": "git ls-files -z --cached --others --exclude-standard | xargs -0 prettier --check --ignore-unknown",
     "knip": "knip",
