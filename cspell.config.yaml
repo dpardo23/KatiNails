@@ -19,3 +19,6 @@ ignorePaths:
   - '**/*.gen.ts'
   - apps/app/android/**
   - .cspell/**
+# Identificadores de avisos de seguridad (GHSA-xxxx-xxxx-xxxx)
+ignoreRegExpList:
+  - 'GHSA(-[0-9a-z]{4}){3}'
