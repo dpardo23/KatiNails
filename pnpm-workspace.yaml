@@ -34,10 +34,10 @@ catalog:
   turbo: 2.11.11
   '@types/node': 24.19.2
   # Sitio público
-  astro: 7.4.11
-  '@astrojs/react': 7.1.8
-  '@astrojs/mdx': 8.1.5
-  '@astrojs/sitemap': 3.7.4
+  astro: 7.4.12
+  '@astrojs/react': 7.1.9
+  '@astrojs/mdx': 8.1.6
+  '@astrojs/sitemap': 3.7.5
   '@astrojs/check': 0.9.12
   # App
   react: 19.3.1
