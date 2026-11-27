@@ -57,7 +57,7 @@ jobs:
         env:
           RAMA: ${{ github.head_ref }}
         run: |
-          patron='^(feature/HU-[A-Z]+-[0-9]{3}-[a-z0-9-]+|tech/T-[0-9]{2}-[a-z0-9-]+|(fix|hotfix)/BUG-[0-9]+-[a-z0-9-]+|(docs|ci|chore)/[a-z0-9-]+|spike/T-[0-9]{2}-[a-z0-9-]+|develop|dependabot/.+)$'
+          patron='^(feature/HU-[A-Z]+-[0-9]{3}-[a-z0-9-]+|tech/T-[0-9]{2}-[a-z0-9-]+|test/(HU-[A-Z]+-[0-9]{3}|T-[0-9]{2})-[a-z0-9-]+|(fix|hotfix)/BUG-[0-9]+-[a-z0-9-]+|(docs|ci|chore)/[a-z0-9-]+|spike/T-[0-9]{2}-[a-z0-9-]+|develop|dependabot/.+)$'
           if ! printf '%s' "$RAMA" | grep -Eq "$patron"; then
             echo "::error::La rama no cumple el modelo de ramas."
             exit 1
@@ -205,17 +205,38 @@ jobs:
       - name: Edge Functions (Deno)
         run: deno check --config supabase/functions/api/deno.json supabase/functions/api/index.ts
 
-  base-de-datos:
+  aceptacion:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node
+          instalar-dependencias: 'false'
+      - name: La guardia de aceptación pasa sus propios casos
+        run: scripts/probar-guardia-de-aceptacion.sh scripts/guardia-de-aceptacion.mjs
+      - name: Pruebas de aceptación intactas (reglas por tipo de rama)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RAMA: ${{ github.head_ref }}
+        run: node scripts/guardia-de-aceptacion.mjs
+
+  integracion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/preparar
         with:
-          herramientas: supabase github:sbdchd/squawk
-          instalar-dependencias: 'false'
+          herramientas: node pnpm supabase github:sbdchd/squawk
       - name: Lint de las migraciones (Squawk)
         run: |
           shopt -s nullglob
@@ -232,25 +253,39 @@ jobs:
             echo "::error::Puertos de Supabase ocupados: $ocupados"
             exit 1
           fi
-      - name: Base de datos desde cero
-        run: supabase db start
+      - name: Supabase desde cero (base, API de datos, Auth y Edge Functions)
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,realtime,storage-api,supavisor,postgres-meta
       - name: pgTAP (RLS y permisos por rol)
         run: supabase test db
       - name: Lint del esquema
         run: supabase db lint --level warning --fail-on error
+      - name: Pruebas de aceptación contra la API real
+        # Una prueba con `test.fails` debe fallar: si pasa antes de que exista la función, el job falla.
+        run: pnpm run test:acceptance
 
   ci-ok:
     if: always()
     needs:
-      [versiones, convenciones, seguridad, semgrep, flujos, especificacion, calidad, base-de-datos]
+      [
+        versiones,
+        convenciones,
+        seguridad,
+        semgrep,
+        flujos,
+        especificacion,
+        calidad,
+        aceptacion,
+        integracion,
+      ]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - name: Resumen
+        # Solo vale "success": un job omitido por error (skipped) también bloquea la fusión.
         env:
           RESULTADOS: ${{ toJSON(needs.*.result) }}
         run: |
-          if printf '%s' "$RESULTADOS" | grep -Eq '"(failure|cancelled)"'; then
-            echo "::error::Algún job falló o se canceló."
+          if printf '%s' "$RESULTADOS" | grep -Eq '"(failure|cancelled|skipped)"'; then
+            echo "::error::Algún job falló, se canceló o se omitió."
             exit 1
           fi
