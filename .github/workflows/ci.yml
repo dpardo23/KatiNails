@@ -127,6 +127,16 @@ jobs:
             exit 1
           fi
           echo "Pasó."
+      - name: Solo correos noreply de GitHub en autores y committers
+        # Un correo personal en un commit queda público para siempre. Las fusiones por la web o por la API
+        # usan el correo de la cuenta: con "Keep my email addresses private" GitHub pone el noreply.
+        run: |
+          otros="$(git log --all --format='%ae%n%ce' | sort -u | grep -vE '^([0-9]+\+)?[^@]+@users\.noreply\.github\.com$|^noreply@github\.com$' || true)"
+          if [ -n "$otros" ]; then
+            echo "::error::Hay $(printf '%s\n' "$otros" | wc -l) correo(s) que no son noreply de GitHub en el historial."
+            exit 1
+          fi
+          echo "Pasó."
       - name: Mismos nombres en .env.example e infra/secretos.toml
         run: node scripts/comparar-env.mjs
       - name: Secretos en todo el historial
