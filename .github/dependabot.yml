@@ -18,6 +18,9 @@ updates:
       # TypeScript se queda en 6.0.x: typescript-eslint pide < 6.1
       - dependency-name: typescript
         update-types: [version-update:semver-major, version-update:semver-minor]
+      # Los tipos de Node siguen a la versión de Node de mise.toml (24): la mayor la cambia una persona.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
