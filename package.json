@@ -23,7 +23,7 @@
     "check": "pnpm run format:check && pnpm run sherif && pnpm run lint:raiz && turbo run lint typecheck test && pnpm run knip && pnpm run deps:check",
     "cf:check": "wrangler deploy --dry-run --env= -c infra/wrangler/web.jsonc && wrangler deploy --dry-run --env= -c infra/wrangler/app.jsonc",
     "spell": "git ls-files -z --cached --others --exclude-standard | xargs -0 cspell --no-progress --no-must-find-files",
-    "lint:raiz": "eslint --max-warnings=0 scripts eslint.config.js commitlint.config.mjs .dependency-cruiser.cjs"
+    "lint:raiz": "eslint --max-warnings=0 scripts eslint.config.js commitlint.config.mjs .dependency-cruiser.cjs .mise/tasks/entorno/env .mise/tasks/github/configurar .mise/tasks/secretos/github .mise/tasks/secretos/supabase"
   },
   "devDependencies": {
     "@commitlint/cli": "catalog:",
