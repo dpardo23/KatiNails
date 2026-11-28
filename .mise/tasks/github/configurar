@@ -59,7 +59,7 @@ const flags = {
   'private-vulnerability-reporting': 'reporte privado de vulnerabilidades',
 };
 for (const [path, label] of Object.entries(flags)) {
-  let enabled = false;
+  let enabled;
   try {
     const now = api('GET', `${base}/${path}`);
     enabled = now === null || now.enabled === true;
@@ -99,11 +99,9 @@ for (const [name, env] of Object.entries(read('entornos.json'))) {
       ? { protected_branches: false, custom_branch_policies: true }
       : null,
   };
-  let exists = true;
   try {
     api('GET', `${base}/environments/${name}`);
   } catch {
-    exists = false;
     pending += 1;
     console.log(`CAMBIA  environment ${name}: no existe → se crea`);
   }

@@ -49,6 +49,17 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
+    // Tareas de mise escritas en Node: no tienen extensión, así que se nombran una por una.
+    files: [
+      '.mise/tasks/entorno/env',
+      '.mise/tasks/github/configurar',
+      '.mise/tasks/secretos/github',
+      '.mise/tasks/secretos/supabase',
+    ],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { globals: globals.node, sourceType: 'module' },
+  },
+  {
     files: ['apps/app/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}', 'apps/web/**/*.tsx'],
     extends: [reactHooks.configs.flat['recommended-latest'], jsxA11y.configs.recommended],
     languageOptions: { globals: globals.browser },
