@@ -74,6 +74,7 @@ jobs:
           RAMA: ${{ github.head_ref }}
           TITULO: ${{ github.event.pull_request.title }}
           CUERPO: ${{ github.event.pull_request.body }}
+          AUTOR: ${{ github.event.pull_request.user.login }}
         run: |
           if [ -z "$PATRONES" ]; then
             echo "::error::Falta el secreto PATRONES_PROHIBIDOS."
@@ -82,6 +83,9 @@ jobs:
           lista="$(mktemp)"
           trap 'rm -f "$lista"' EXIT
           printf '%s\n' "$PATRONES" | sed '/^[[:space:]]*$/d' > "$lista"
+          # La descripción de Dependabot trae notas de versión de terceros y no entra al historial
+          # (el mensaje de la fusión es el título): solo se revisan su rama y su título.
+          if [ "$AUTOR" = "dependabot[bot]" ]; then CUERPO=""; fi
           if printf '%s\n%s\n%s\n' "$RAMA" "$TITULO" "$CUERPO" | grep -iF -f "$lista" >/dev/null; then
             echo "::error::Falló la revisión de rutas y textos prohibidos."
             exit 1
