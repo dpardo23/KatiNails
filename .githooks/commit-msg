@@ -11,7 +11,7 @@ pnpm exec commitlint --edit "$1"
 
 # Textos prohibidos de una lista local opcional: vive en .git/info, nunca se versiona.
 lista="$(git rev-parse --git-path info/textos-prohibidos)"
-if [ -f "$lista" ] && grep -v '^#' "$1" | grep -qiF -f "$lista"; then
+if [ -f "$lista" ] && grep -v '^#' "$1" | grep -iF -f "$lista" >/dev/null; then
   echo "commit-msg: FALLA: el mensaje tiene un texto prohibido." >&2
   exit 1
 fi
