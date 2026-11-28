@@ -11,7 +11,15 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # En un PR, un push nuevo cancela la corrida vieja. En develop y main cada fusión corre completa:
+  # cuando exista el despliegue, cortarlo a la mitad dejaría un entorno a medias.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# bash con -eo pipefail: una falla dentro de una tubería (a | b) también corta el paso.
+# Por eso nunca "a | grep -q": grep termina al primer hallazgo, a recibe SIGPIPE y la tubería falla.
+defaults:
+  run:
+    shell: bash
 
 env:
   # Valores públicos de prueba para compilar la app (no son secretos: la app los valida con Zod).
@@ -129,9 +137,9 @@ jobs:
           lista="$(mktemp)"
           trap 'rm -f "$lista"' EXIT
           printf '%s\n' "$PATRONES" | sed '/^$/d' > "$lista"
-          if git ls-files | grep -qiF -f "$lista" \
-            || git log --all --format='%an%n%ae%n%B' | grep -qiF -f "$lista" \
-            || git log --all --name-only --format='' | grep -qiF -f "$lista"; then
+          if git ls-files | grep -iF -f "$lista" >/dev/null \
+            || git log --all --format='%an%n%ae%n%B' | grep -iF -f "$lista" >/dev/null \
+            || git log --all --name-only --format='' | grep -iF -f "$lista" >/dev/null; then
             echo "::error::Falló la revisión de rutas y textos prohibidos."
             exit 1
           fi
@@ -186,7 +194,10 @@ jobs:
           instalar-dependencias: 'false'
       - run: actionlint
       - run: zizmor --offline .github
-      - run: shellcheck .entorno .githooks/* scripts/*.sh .mise/tasks/android/* .mise/tasks/github/etiquetas .mise/tasks/entorno/envolturas .mise/tasks/supabase/*
+      - name: shellcheck (todo archivo versionado que empieza con #!...bash o #!.../sh, más .entorno)
+        run: |
+          mapfile -t scripts < <(git ls-files -z | xargs -0 awk 'FNR == 1 { if (/^#!.*(bash|\/sh)/) print FILENAME; nextfile }' | grep -v '/gradlew$')
+          shellcheck .entorno "${scripts[@]}"
 
   especificacion:
     runs-on: ubuntu-24.04
@@ -334,7 +345,7 @@ jobs:
         env:
           RESULTADOS: ${{ toJSON(needs.*.result) }}
         run: |
-          if printf '%s' "$RESULTADOS" | grep -Eq '"(failure|cancelled|skipped)"'; then
+          if printf '%s' "$RESULTADOS" | grep -E '"(failure|cancelled|skipped)"' >/dev/null; then
             echo "::error::Algún job falló, se canceló o se omitió."
             exit 1
           fi

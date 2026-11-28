@@ -10,5 +10,3 @@
   - head-branch: ['^ci/']
 'tipo:mantenimiento':
   - head-branch: ['^chore/']
-dependencias:
-  - head-branch: ['^dependabot/']

@@ -13,6 +13,10 @@ concurrency:
   group: mutacion
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   dominio:
     runs-on: ubuntu-24.04
@@ -26,7 +30,7 @@ jobs:
           herramientas: node pnpm
       - name: Stryker sobre todo packages/domain
         run: |
-          if ! git ls-files 'packages/domain/src/*.ts' | grep -qvE '\.test\.ts$|^packages/domain/src/index\.ts$'; then
+          if ! git ls-files 'packages/domain/src/*.ts' | grep -vE '\.test\.ts$|^packages/domain/src/index\.ts$' >/dev/null; then
             echo "El dominio todavía no tiene código."
             exit 0
           fi
