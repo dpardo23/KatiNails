@@ -1,0 +1,89 @@
+name: pr
+
+# Revisa lo que el PR dice de sí mismo: rama, título y descripción. Corre también al editarlo (edited):
+# el título queda como mensaje del commit de la fusión, y cambiarlo después de que el CI pasó no
+# volvería a correr ci.yml. El check obligatorio es el job revisar-pr.
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  revisar-pr:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/preparar
+        with:
+          herramientas: node pnpm
+      - name: Nombre de la rama
+        env:
+          RAMA: ${{ github.head_ref }}
+        run: |
+          patron='^(feature/HU-[A-Z]+-[0-9]{3}-[a-z0-9-]+|tech/T-[0-9]{2}-[a-z0-9-]+|test/(HU-[A-Z]+-[0-9]{3}|T-[0-9]{2})-[a-z0-9-]+|(fix|hotfix)/BUG-[0-9]+-[a-z0-9-]+|(docs|ci|chore)/[a-z0-9-]+|spike/T-[0-9]{2}-[a-z0-9-]+|develop|dependabot/.+)$'
+          if ! printf '%s' "$RAMA" | grep -Eq "$patron"; then
+            echo "::error::La rama no cumple el modelo de ramas."
+            exit 1
+          fi
+      - name: Origen del PR hacia main (solo develop o hotfix/*)
+        if: github.base_ref == 'main'
+        env:
+          RAMA: ${{ github.head_ref }}
+        run: |
+          if ! printf '%s' "$RAMA" | grep -Eq '^(develop|hotfix/BUG-[0-9]+-[a-z0-9-]+)$'; then
+            echo "::error::A main solo entran PR desde develop o hotfix/*."
+            exit 1
+          fi
+      - name: Título del cierre de sprint (develop hacia main)
+        if: github.base_ref == 'main' && github.head_ref == 'develop'
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+        run: |
+          if ! printf '%s' "$TITULO" | grep -Eq '^chore\(repo\): cierre del sprint [0-9]{2} · [a-z0-9-]+$'; then
+            echo "::error::El título debe ser: chore(repo): cierre del sprint NN · slug"
+            exit 1
+          fi
+      - name: Título y descripción del PR
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+          CUERPO: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$TITULO" | pnpm exec commitlint
+          if printf '%s\n' "$CUERPO" | grep -Eqi '^[[:space:]]*co-authored-by:'; then
+            echo "::error::La descripción del PR tiene un pie no permitido."
+            exit 1
+          fi
+      - name: Rutas y textos prohibidos en la rama, el título y la descripción (lista secreta)
+        env:
+          PATRONES: ${{ secrets.PATRONES_PROHIBIDOS }}
+          RAMA: ${{ github.head_ref }}
+          TITULO: ${{ github.event.pull_request.title }}
+          CUERPO: ${{ github.event.pull_request.body }}
+        run: |
+          if [ -z "$PATRONES" ]; then
+            echo "::error::Falta el secreto PATRONES_PROHIBIDOS."
+            exit 1
+          fi
+          lista="$(mktemp)"
+          trap 'rm -f "$lista"' EXIT
+          printf '%s\n' "$PATRONES" | sed '/^[[:space:]]*$/d' > "$lista"
+          if printf '%s\n%s\n%s\n' "$RAMA" "$TITULO" "$CUERPO" | grep -qiF -f "$lista"; then
+            echo "::error::Falló la revisión de rutas y textos prohibidos."
+            exit 1
+          fi
+          echo "Pasó."

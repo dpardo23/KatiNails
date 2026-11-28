@@ -39,7 +39,8 @@
           {
             "context": "ci-ok",
             "integration_id": 15368
-          }
+          },
+          { "context": "revisar-pr", "integration_id": 15368 }
         ]
       }
     },
