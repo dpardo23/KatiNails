@@ -59,7 +59,7 @@ const flags = {
   'private-vulnerability-reporting': 'reporte privado de vulnerabilidades',
 };
 for (const [path, label] of Object.entries(flags)) {
-  let enabled = false;
+  let enabled;
   try {
     const now = api('GET', `${base}/${path}`);
     enabled = now === null || now.enabled === true;
@@ -76,6 +76,11 @@ for (const [path, label] of Object.entries(flags)) {
 // 2. Actions
 const actions = read('acciones.json');
 compare('acciones', api('GET', `${base}/actions/permissions`), actions.permisos);
+compare(
+  'acciones permitidas',
+  api('GET', `${base}/actions/permissions/selected-actions`),
+  actions.acciones_permitidas,
+);
 step('acciones permitidas y fijadas por SHA', () => {
   api('PUT', `${base}/actions/permissions`, actions.permisos);
   api('PUT', `${base}/actions/permissions/selected-actions`, actions.acciones_permitidas);
@@ -83,6 +88,11 @@ step('acciones permitidas y fijadas por SHA', () => {
 compare('flujos', api('GET', `${base}/actions/permissions/workflow`), actions.flujos);
 step('permisos del GITHUB_TOKEN', () =>
   api('PUT', `${base}/actions/permissions/workflow`, actions.flujos),
+);
+compare(
+  'forks',
+  api('GET', `${base}/actions/permissions/fork-pr-contributor-approval`),
+  actions.forks,
 );
 step('aprobación de PR desde forks', () =>
   api('PUT', `${base}/actions/permissions/fork-pr-contributor-approval`, actions.forks),
@@ -99,40 +109,103 @@ for (const [name, env] of Object.entries(read('entornos.json'))) {
       ? { protected_branches: false, custom_branch_policies: true }
       : null,
   };
-  let exists = true;
+  const policies = `${base}/environments/${name}/deployment-branch-policies`;
+  const wanted = custom
+    ? [
+        ...env.ramas.map((n) => ({ name: n, type: 'branch' })),
+        ...env.etiquetas.map((n) => ({ name: n, type: 'tag' })),
+      ]
+    : [];
+  const key = (p) => `${p.type}:${p.name}`;
+  let current = null;
   try {
-    api('GET', `${base}/environments/${name}`);
+    current = api('GET', `${base}/environments/${name}`);
   } catch {
-    exists = false;
     pending += 1;
     console.log(`CAMBIA  environment ${name}: no existe → se crea`);
+  }
+  let livePolicies = [];
+  if (current) {
+    const reviewers = (current.protection_rules ?? [])
+      .filter((r) => r.type === 'required_reviewers')
+      .flatMap((r) => r.reviewers.map((x) => ({ type: x.type, id: x.reviewer.id })));
+    compare(`environment ${name}`, { reviewers }, { reviewers: body.reviewers });
+    compare(
+      `environment ${name}`,
+      { deployment_branch_policy: current.deployment_branch_policy },
+      { deployment_branch_policy: body.deployment_branch_policy },
+    );
+    if (current.deployment_branch_policy?.custom_branch_policies) {
+      livePolicies = api('GET', policies).branch_policies;
+    }
+    compare(
+      `environment ${name}`,
+      { ramas_y_etiquetas: livePolicies.map(key).sort() },
+      { ramas_y_etiquetas: wanted.map(key).sort() },
+    );
   }
   step(`environment ${name}`, () => {
     api('PUT', `${base}/environments/${name}`, body);
     if (!custom) return;
-    const policies = `${base}/environments/${name}/deployment-branch-policies`;
-    const current = api('GET', policies).branch_policies.map((p) => `${p.type}:${p.name}`);
-    const wanted = [
-      ...env.ramas.map((n) => ({ name: n, type: 'branch' })),
-      ...env.etiquetas.map((n) => ({ name: n, type: 'tag' })),
-    ];
+    const live = api('GET', policies).branch_policies;
     for (const policy of wanted) {
-      if (!current.includes(`${policy.type}:${policy.name}`)) api('POST', policies, policy);
+      if (!live.some((p) => key(p) === key(policy))) api('POST', policies, policy);
+    }
+    for (const policy of live) {
+      if (!wanted.some((p) => key(p) === key(policy))) api('DELETE', `${policies}/${policy.id}`);
     }
   });
 }
 
 // 4. Rulesets (solo con --reglas: exigen que main y develop ya existan en GitHub)
+// GitHub devuelve campos propios (id, _links, fechas…): se compara solo lo que dice el archivo.
+// Las reglas se emparejan por tipo; una regla que sobra en GitHub también cuenta como diferencia.
+const contains = (now, want) => {
+  if (Array.isArray(want)) {
+    return (
+      Array.isArray(now) && now.length === want.length && want.every((w, i) => contains(now[i], w))
+    );
+  }
+  if (want !== null && typeof want === 'object') {
+    return (
+      now !== null &&
+      typeof now === 'object' &&
+      Object.keys(want).every((k) => contains(now[k], want[k]))
+    );
+  }
+  return now === want;
+};
 const rulesDir = join(dir, 'rulesets');
 const existing = api('GET', `${base}/rulesets`);
 for (const file of readdirSync(rulesDir).filter((f) => f.endsWith('.json'))) {
   const ruleset = JSON.parse(readFileSync(join(rulesDir, file), 'utf8'));
   const found = existing.find((r) => r.name === ruleset.name);
+  const suffix = withRules ? '' : ' (con --reglas)';
   if (!found) {
     pending += 1;
-    console.log(
-      `CAMBIA  ruleset ${ruleset.name}: no existe → se crea${withRules ? '' : ' (con --reglas)'}`,
-    );
+    console.log(`CAMBIA  ruleset ${ruleset.name}: no existe → se crea${suffix}`);
+  } else {
+    const live = api('GET', `${base}/rulesets/${found.id}`);
+    const { rules, ...top } = ruleset;
+    for (const [field, value] of Object.entries(top)) {
+      if (!contains(live[field], value)) {
+        pending += 1;
+        console.log(
+          `CAMBIA  ruleset ${ruleset.name}.${field}: ${JSON.stringify(live[field])} → ${JSON.stringify(value)}${suffix}`,
+        );
+      }
+    }
+    const types = new Set([...rules, ...live.rules].map((r) => r.type));
+    for (const type of types) {
+      const want = rules.find((r) => r.type === type);
+      const now = live.rules.find((r) => r.type === type);
+      if (!want || !now || !contains(now, want)) {
+        pending += 1;
+        console.log(
+          `CAMBIA  ruleset ${ruleset.name}, regla ${type}: ${JSON.stringify(now?.parameters ?? now ?? null)} → ${JSON.stringify(want?.parameters ?? want ?? null)}${suffix}`,
+        );
+      }
+    }
   }
   if (apply && withRules) {
     if (found) api('PUT', `${base}/rulesets/${found.id}`, ruleset);
@@ -145,6 +218,6 @@ if (!apply) {
   console.log(
     pending === 0
       ? 'Sin diferencias.'
-      : `${pending} diferencias. Para aplicarlas: mise run github:configurar -- --aplicar`,
+      : `${pending} diferencias. Para aplicarlas: mise run github:configurar -- --aplicar (más --reglas si cambia un ruleset)`,
   );
 }

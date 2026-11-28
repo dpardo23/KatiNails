@@ -43,7 +43,9 @@ export default {
   ignores: [isDependabot],
   rules: {
     'scope-enum': [2, 'always', SCOPES],
-    'subject-case': [2, 'always', 'lower-case'],
+    // En su lugar va subject-no-leading-capital: admite siglas e identificadores (RLS, HU-RES-001).
+    'subject-case': [0],
+    'subject-no-leading-capital': [2, 'always'],
     'header-max-length': [2, 'always', 72],
     'body-max-line-length': [2, 'always', 100],
     'only-allowed-trailers': [2, 'always'],
@@ -51,6 +53,16 @@ export default {
   plugins: [
     {
       rules: {
+        // Rechaza "Agrega algo" y "AGREGA ALGO"; admite "agrega RLS", "HU-RES-001 reserva" y "T-01 algo".
+        'subject-no-leading-capital': ({ subject }) => {
+          const text = subject ?? '';
+          const capitalized = /^\p{Lu}\p{Ll}/u.test(text);
+          const shouting = /\p{L}{2,}/u.test(text) && !/\p{Ll}/u.test(text);
+          return [
+            !capitalized && !shouting,
+            'el asunto empieza en minúscula (se admiten siglas e identificadores: RLS, HU-RES-001)',
+          ];
+        },
         'only-allowed-trailers': ({ raw, footer }) => {
           // Pies = líneas "Token: valor" del pie. Co-authored-by se rechaza en cualquier línea.
           const footerLines = (footer ?? '').split('\n');
