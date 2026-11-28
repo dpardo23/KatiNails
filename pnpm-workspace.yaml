@@ -34,10 +34,10 @@ catalog:
   turbo: 2.11.11
   '@types/node': 24.19.2
   # Sitio público
-  astro: 7.4.11
-  '@astrojs/react': 7.1.8
-  '@astrojs/mdx': 8.1.5
-  '@astrojs/sitemap': 3.7.4
+  astro: 7.4.12
+  '@astrojs/react': 7.1.9
+  '@astrojs/mdx': 8.1.6
+  '@astrojs/sitemap': 3.7.5
   '@astrojs/check': 0.9.12
   # App
   react: 19.3.1
@@ -61,7 +61,7 @@ catalog:
   # Calidad
   vitest: 5.1.0
   '@vitest/coverage-v8': 5.1.0
-  eslint: 10.14.0
+  eslint: 10.15.0
   '@eslint/js': 10.0.1
   typescript-eslint: 8.72.2
   eslint-plugin-astro: 3.2.1
