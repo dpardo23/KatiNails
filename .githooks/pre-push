@@ -7,6 +7,50 @@ if [ -z "${PROYECTO_RAIZ:-}" ]; then
   exit 1
 fi
 
+# 1. Identidad y textos de lo que se va a subir. Lo que llega a GitHub queda público aunque el CI
+#    falle después, así que se revisa antes de enviarlo. Igual que el job seguridad: nombres,
+#    mensajes y rutas, no el contenido (el código de los propios controles nombra esos textos).
+#    Git pasa por la entrada estándar una línea por referencia:
+#    <ref local> <sha local> <ref remota> <sha remoto>.
+#    Con pipefail, "a | grep -q" puede fallar aunque encuentre algo (a recibe la señal de tubería
+#    rota): se usa grep … >/dev/null.
+cero="$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')"
+lista_local="$(git rev-parse --git-path info/textos-prohibidos)"
+lista="$(mktemp)"
+trap 'rm -f "$lista"' EXIT
+if [ -f "$lista_local" ]; then
+  sed '/^[[:space:]]*$/d' "$lista_local" >"$lista"
+else
+  echo "pre-push: AVISO: falta $lista_local; no se revisan los textos prohibidos (guía 2)." >&2
+fi
+
+while read -r _ sha_local ref_remota sha_remoto; do
+  [ "$sha_local" = "$cero" ] && continue # se borra una rama: no sube nada
+  if [ "$sha_remoto" = "$cero" ]; then
+    rango=("$sha_local" --not --remotes)
+  else
+    rango=("$sha_remoto..$sha_local")
+  fi
+
+  otros="$(git log --format='%ae%n%ce' "${rango[@]}" | sort -u \
+    | grep -vE '^([0-9]+\+)?[^@]+@users\.noreply\.github\.com$|^noreply@github\.com$' || true)"
+  if [ -n "$otros" ]; then
+    echo "pre-push: FALLA: hay commits con un correo que no es el noreply de GitHub:" >&2
+    printf '%s\n' "$otros" | sed 's/^/  /' >&2
+    echo "Corrige user.email del repositorio y rehaz esos commits antes de subir." >&2
+    exit 1
+  fi
+
+  if [ -s "$lista" ] && {
+    printf '%s\n' "$ref_remota" | grep -iF -f "$lista" >/dev/null \
+      || git log --format='%an%n%cn%n%B' --name-only "${rango[@]}" | grep -iF -f "$lista" >/dev/null
+  }; then
+    echo "pre-push: FALLA: la rama, un mensaje o un nombre de archivo tiene un texto prohibido." >&2
+    exit 1
+  fi
+done
+
+# 2. Calidad
 pnpm run check
 pnpm run spell
 pnpm run md:lint
